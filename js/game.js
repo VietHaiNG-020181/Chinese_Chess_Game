@@ -19,7 +19,11 @@ export class Game {
         this.moveHistory = [];
         this.gameOver = false;
         this.winner = null;
+        this.loseReason = null; // 'checkmate' or 'perpetual-check'
         this.inCheck = false;
+        this.consecutiveChecks = { [SIDE.RED]: 0, [SIDE.BLACK]: 0 };
+        this.checkHistory = { [SIDE.RED]: [], [SIDE.BLACK]: [] }; // track {pieceKey, toRow, toCol}
+        this.checkLimitReached = false;
     }
 
     cloneBoard(board) {
@@ -103,16 +107,33 @@ export class Game {
 
         const pseudoMoves = getPieceMoves(this.board, row, col);
         const legalMoves = [];
+        const oppSide = piece.side === SIDE.RED ? SIDE.BLACK : SIDE.RED;
+
+        // Check if this side has a perpetual check pattern to avoid
+        const checkHist = this.checkHistory[piece.side];
+        const mustAvoidRepeat = this.consecutiveChecks[piece.side] >= 3;
 
         for (const move of pseudoMoves) {
-            // Try the move
             const testBoard = this.cloneBoard(this.board);
             this.applyMove(testBoard, row, col, move.row, move.col);
 
-            // Check if own king is in check after the move
-            if (!this.isInCheck(testBoard, piece.side) && !this.isFlyingGeneral(testBoard)) {
-                legalMoves.push(move);
+            // Filter out moves that leave own king in check
+            if (this.isInCheck(testBoard, piece.side) || this.isFlyingGeneral(testBoard)) {
+                continue;
             }
+
+            // If at perpetual check limit, block moves that repeat the same check pattern
+            if (mustAvoidRepeat && this.isInCheck(testBoard, oppSide)) {
+                const pieceKey = `${piece.type}_${row}_${col}`;
+                const repeatCount = checkHist.filter(
+                    h => h.pieceKey === pieceKey && h.toRow === move.row && h.toCol === move.col
+                ).length;
+                if (repeatCount >= 1) {
+                    continue; // This exact check pattern has been used before
+                }
+            }
+
+            legalMoves.push(move);
         }
         return legalMoves;
     }
@@ -158,6 +179,11 @@ export class Game {
             piece: { ...piece },
             captured: captured ? { ...captured } : null,
             board: this.cloneBoard(this.board),
+            prevConsecutiveChecks: { ...this.consecutiveChecks },
+            prevCheckHistory: {
+                [SIDE.RED]: [...this.checkHistory[SIDE.RED]],
+                [SIDE.BLACK]: [...this.checkHistory[SIDE.BLACK]],
+            },
         });
 
         // Apply the move
@@ -169,11 +195,33 @@ export class Game {
 
         // Check game state
         this.inCheck = this.isInCheck(this.board, this.currentTurn);
+
+        // Track consecutive checks
+        const movingSide = piece.side;
+        if (this.inCheck) {
+            this.consecutiveChecks[movingSide]++;
+            // Record check pattern: which piece from where to where
+            const pieceKey = `${piece.type}_${fromRow}_${fromCol}`;
+            this.checkHistory[movingSide].push({ pieceKey, toRow, toCol });
+        } else {
+            this.consecutiveChecks[movingSide] = 0;
+            this.checkHistory[movingSide] = [];
+        }
+
+        // Flag if current player has hit the check limit
+        this.checkLimitReached = this.consecutiveChecks[this.currentTurn] >= 3;
+
         const hasLegalMoves = this.getAllLegalMoves(this.currentTurn).length > 0;
 
         if (!hasLegalMoves) {
             this.gameOver = true;
             this.winner = this.currentTurn === SIDE.RED ? SIDE.BLACK : SIDE.RED;
+            // Determine if it's checkmate or perpetual check loss
+            if (this.checkLimitReached) {
+                this.loseReason = 'perpetual-check';
+            } else {
+                this.loseReason = 'checkmate';
+            }
         }
 
         return true;
@@ -190,6 +238,12 @@ export class Game {
         this.currentTurn = lastEntry.piece.side;
         this.gameOver = false;
         this.winner = null;
+        this.loseReason = null;
+
+        // Restore consecutive checks
+        this.consecutiveChecks = lastEntry.prevConsecutiveChecks || { [SIDE.RED]: 0, [SIDE.BLACK]: 0 };
+        this.checkHistory = lastEntry.prevCheckHistory || { [SIDE.RED]: [], [SIDE.BLACK]: [] };
+        this.checkLimitReached = this.consecutiveChecks[this.currentTurn] >= 3;
 
         // Restore last move indicator
         if (this.moveHistory.length > 0) {
@@ -236,7 +290,10 @@ export class Game {
             lastMove: this.lastMove,
             gameOver: this.gameOver,
             winner: this.winner,
+            loseReason: this.loseReason,
             inCheck: this.inCheck,
+            consecutiveChecks: this.consecutiveChecks,
+            checkHistory: this.checkHistory,
         };
     }
 
@@ -250,7 +307,11 @@ export class Game {
         this.lastMove = data.lastMove || null;
         this.gameOver = data.gameOver || false;
         this.winner = data.winner || null;
+        this.loseReason = data.loseReason || null;
         this.inCheck = data.inCheck || false;
+        this.consecutiveChecks = data.consecutiveChecks || { [SIDE.RED]: 0, [SIDE.BLACK]: 0 };
+        this.checkHistory = data.checkHistory || { [SIDE.RED]: [], [SIDE.BLACK]: [] };
+        this.checkLimitReached = this.consecutiveChecks[this.currentTurn] >= 3;
         this.selectedPiece = null;
         this.validMoves = [];
     }

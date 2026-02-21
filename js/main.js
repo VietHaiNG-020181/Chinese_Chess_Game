@@ -30,9 +30,21 @@ class ChineseChessApp {
     initUI() {
         // Mode selection buttons
         document.getElementById('btn-pvp').addEventListener('click', () => this.startGame('pvp'));
-        document.getElementById('btn-pvsbot').addEventListener('click', () => this.startGame('pvsbot'));
+        document.getElementById('btn-pvsbot').addEventListener('click', () => this.showDifficultyPicker());
         document.getElementById('btn-online').addEventListener('click', () => this.showLobby());
         document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
+
+        // Difficulty buttons
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const depth = parseInt(btn.dataset.depth);
+                const randomChance = parseFloat(btn.dataset.random);
+                this.aiDepth = depth;
+                this.aiRandomChance = randomChance;
+                document.getElementById('difficulty-modal').classList.add('hidden');
+                this.startGame('pvsbot');
+            });
+        });
 
         // Control buttons
         document.getElementById('btn-undo').addEventListener('click', () => this.handleUndo());
@@ -120,6 +132,8 @@ class ChineseChessApp {
                 playerSide: this.playerSide,
                 gameState: this.game.toJSON(),
                 savedAt: Date.now(),
+                aiDepth: this.aiDepth || 3,
+                aiRandomChance: this.aiRandomChance || 0,
             };
             localStorage.setItem(SAVE_KEY, JSON.stringify(data));
         } catch (e) {
@@ -146,7 +160,8 @@ class ChineseChessApp {
             const section = document.getElementById('resume-section');
             section.classList.remove('hidden');
             const info = document.getElementById('resume-info');
-            const modeLabel = data.mode === 'pvsbot' ? 'vs Bot' : 'PvP';
+            const diffName = data.aiDepth === 2 ? 'Easy' : data.aiDepth === 4 ? 'Hard' : 'Medium';
+            const modeLabel = data.mode === 'pvsbot' ? `vs Bot (${diffName})` : 'PvP';
             const turnLabel = data.gameState.currentTurn === SIDE.RED ? 'Red' : 'Black';
             const moves = (data.gameState.moveHistory || []).length;
             info.textContent = `${modeLabel} · ${turnLabel}'s turn · ${moves} moves`;
@@ -163,6 +178,8 @@ class ChineseChessApp {
 
             this.mode = data.mode;
             this.playerSide = data.playerSide || SIDE.RED;
+            this.aiDepth = data.aiDepth || 3;
+            this.aiRandomChance = data.aiRandomChance || 0;
             this.game.fromJSON(data.gameState);
             this.botThinking = false;
             this.opponentDisconnected = false;
@@ -171,7 +188,7 @@ class ChineseChessApp {
             this.renderer = new BoardRenderer(canvas);
 
             if (this.mode === 'pvsbot') {
-                this.ai = new AI(SIDE.BLACK);
+                this.ai = new AI(SIDE.BLACK, this.aiDepth, this.aiRandomChance);
             } else {
                 this.ai = null;
             }
@@ -180,7 +197,10 @@ class ChineseChessApp {
 
             let modeLabel;
             if (this.mode === 'pvp') modeLabel = '⚔️ Player vs Player';
-            else if (this.mode === 'pvsbot') modeLabel = '🤖 Player vs Bot';
+            else if (this.mode === 'pvsbot') {
+                const diffName = this.aiDepth === 2 ? 'Easy' : this.aiDepth === 4 ? 'Hard' : 'Medium';
+                modeLabel = `🤖 Bot (${diffName})`;
+            }
             else modeLabel = '🌐 Online';
             document.getElementById('mode-label').textContent = modeLabel;
 
@@ -447,6 +467,13 @@ class ChineseChessApp {
         }, 2000);
     }
 
+    // ── Difficulty Picker ─────────────────────
+
+    showDifficultyPicker() {
+        this.showScreen('game-screen');
+        document.getElementById('difficulty-modal').classList.remove('hidden');
+    }
+
     // ── Game Start ────────────────────────────
 
     startGame(mode) {
@@ -464,7 +491,7 @@ class ChineseChessApp {
         }
 
         if (mode === 'pvsbot') {
-            this.ai = new AI(SIDE.BLACK);
+            this.ai = new AI(SIDE.BLACK, this.aiDepth || 3, this.aiRandomChance || 0);
             this.playerSide = SIDE.RED;
         } else if (mode === 'pvp') {
             this.ai = null;
@@ -476,7 +503,10 @@ class ChineseChessApp {
         // Update mode indicator
         let modeLabel;
         if (mode === 'pvp') modeLabel = '⚔️ Player vs Player';
-        else if (mode === 'pvsbot') modeLabel = '🤖 Player vs Bot';
+        else if (mode === 'pvsbot') {
+            const diffName = this.aiDepth === 2 ? 'Easy' : this.aiDepth === 4 ? 'Hard' : 'Medium';
+            modeLabel = `🤖 Bot (${diffName})`;
+        }
         else modeLabel = '🌐 Online';
         document.getElementById('mode-label').textContent = modeLabel;
 
@@ -546,6 +576,11 @@ class ChineseChessApp {
                     this.updateStatus();
                     this.renderer.render(this.game);
                     this.saveGame();
+
+                    // Warn when check limit reached
+                    if (this.game.checkLimitReached) {
+                        this.showToast('⛔ 3 consecutive checks! Must make a different move.');
+                    }
 
                     // Clear save on game over
                     if (this.game.gameOver) this.clearSave();
@@ -656,13 +691,21 @@ class ChineseChessApp {
         if (this.game.gameOver) {
             const winnerName = this.game.winner === SIDE.RED ? 'Red' : 'Black';
             const winnerChar = this.game.winner === SIDE.RED ? '紅方' : '黑方';
+            const loserName = this.game.winner === SIDE.RED ? 'Black' : 'Red';
+            const loserChar = this.game.winner === SIDE.RED ? '黑方' : '紅方';
 
-            let suffix = '';
-            if (this.mode === 'online') {
-                suffix = this.game.winner === this.playerSide ? ' — You Win! 🎉' : ' — You Lose';
+            let text;
+            if (this.game.loseReason === 'perpetual-check') {
+                text = `⛔ ${loserChar} (${loserName}) loses by perpetual check!`;
+            } else {
+                text = `🏆 ${winnerChar} (${winnerName}) Wins!`;
             }
 
-            statusEl.textContent = `🏆 ${winnerChar} (${winnerName}) Wins!${suffix}`;
+            if (this.mode === 'online') {
+                text += this.game.winner === this.playerSide ? ' — You Win! 🎉' : ' — You Lose';
+            }
+
+            statusEl.textContent = text;
             statusEl.className = 'status-text game-over';
             turnIndicator.className = `turn-dot ${this.game.winner}`;
             return;
@@ -687,8 +730,12 @@ class ChineseChessApp {
             text += ' — ⚠️ CHECK!';
         }
 
+        if (this.game.checkLimitReached) {
+            text += ' — ⛔ No more checks!';
+        }
+
         statusEl.textContent = text;
-        statusEl.className = `status-text ${this.game.inCheck ? 'in-check' : ''}`;
+        statusEl.className = `status-text ${this.game.inCheck ? 'in-check' : ''} ${this.game.checkLimitReached ? 'check-limited' : ''}`;
         turnIndicator.className = `turn-dot ${this.game.currentTurn}`;
     }
 

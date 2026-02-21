@@ -5,7 +5,6 @@
 import { PIECE, SIDE, COLS, ROWS, PIECE_VALUES, SOLDIER_ADVANCE_BONUS } from './constants.js';
 import { getPieceMoves } from './pieces.js';
 
-const MAX_DEPTH = 3;
 
 // Positional bonus tables (10x9, row x col)
 // Encourages pieces to move to more active squares
@@ -37,9 +36,11 @@ const POSITION_BONUS = {
 };
 
 export class AI {
-    constructor(side) {
+    constructor(side, depth = 3, randomChance = 0) {
         this.side = side;
         this.oppSide = side === SIDE.RED ? SIDE.BLACK : SIDE.RED;
+        this.depth = depth;
+        this.randomChance = randomChance; // probability of picking a random move (0-1)
     }
 
     /**
@@ -67,11 +68,17 @@ export class AI {
                 let bestScore = -Infinity;
                 let bestMove = moves[0];
 
+                // Easy mode: sometimes pick a random move
+                if (this.randomChance > 0 && Math.random() < this.randomChance) {
+                    resolve(moves[Math.floor(Math.random() * moves.length)]);
+                    return;
+                }
+
                 for (const move of moves) {
                     const board = game.cloneBoard(game.board);
                     this.applyMove(board, move.fromRow, move.fromCol, move.toRow, move.toCol);
 
-                    const score = this.minimax(board, MAX_DEPTH - 1, -Infinity, Infinity, false, game);
+                    const score = this.minimax(board, this.depth - 1, -Infinity, Infinity, false, game);
 
                     if (score > bestScore) {
                         bestScore = score;
@@ -103,7 +110,7 @@ export class AI {
 
         if (moves.length === 0) {
             // No moves = loss for the side that can't move
-            return isMaximizing ? -99999 + (MAX_DEPTH - depth) : 99999 - (MAX_DEPTH - depth);
+            return isMaximizing ? -99999 + (this.depth - depth) : 99999 - (this.depth - depth);
         }
 
         if (isMaximizing) {

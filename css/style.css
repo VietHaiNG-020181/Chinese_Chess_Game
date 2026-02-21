@@ -767,6 +767,87 @@ body::before {
     border-color: rgba(46, 204, 113, 0.5) !important;
 }
 
+/* === Difficulty Picker === */
+.difficulty-picker {
+    max-width: 340px;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.difficulty-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.difficulty-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all var(--transition-fast);
+    text-align: left;
+}
+
+.difficulty-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.difficulty-btn.easy:hover {
+    background: rgba(46, 204, 113, 0.1);
+    border-color: rgba(46, 204, 113, 0.4);
+}
+
+.difficulty-btn.medium:hover {
+    background: rgba(241, 196, 15, 0.1);
+    border-color: rgba(241, 196, 15, 0.4);
+}
+
+.difficulty-btn.hard:hover {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: rgba(231, 76, 60, 0.4);
+}
+
+.difficulty-btn:active {
+    transform: scale(0.98);
+}
+
+.diff-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.diff-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.diff-info strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.diff-info small {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
 /* === Player Name Input === */
 .name-input-group {
     margin-bottom: 16px;

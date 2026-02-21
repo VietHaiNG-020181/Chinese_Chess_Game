@@ -236,6 +236,36 @@
         </div>
     </div>
 
+    <!-- Difficulty Picker (for PvsBot) -->
+    <div id="difficulty-modal" class="modal-overlay hidden">
+        <div class="modal-box difficulty-picker">
+            <p class="modal-title">🤖 Choose Difficulty</p>
+            <div class="difficulty-options">
+                <button class="difficulty-btn easy" data-depth="2" data-random="0.2">
+                    <span class="diff-icon">🟢</span>
+                    <span class="diff-info">
+                        <strong>Easy</strong>
+                        <small>Relaxed play, makes mistakes</small>
+                    </span>
+                </button>
+                <button class="difficulty-btn medium" data-depth="3" data-random="0">
+                    <span class="diff-icon">🟡</span>
+                    <span class="diff-info">
+                        <strong>Medium</strong>
+                        <small>Balanced challenge</small>
+                    </span>
+                </button>
+                <button class="difficulty-btn hard" data-depth="4" data-random="0">
+                    <span class="diff-icon">🔴</span>
+                    <span class="diff-info">
+                        <strong>Hard</strong>
+                        <small>Thinks deeper, punishes mistakes</small>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast hidden"></div>
 
