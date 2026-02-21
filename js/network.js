@@ -18,6 +18,9 @@ export class Network {
         this.onRestartRequest = null;
         this.onGameRestart = null;
         this.onRestartDeclined = null;
+        this.onRoomsList = null;
+        this.onRoomsUpdated = null;
+        this.onEmoteReceived = null;
     }
 
     connect() {
@@ -62,6 +65,15 @@ export class Network {
                 if (this.onGameStart) this.onGameStart(data);
             });
 
+            // ── Room Browser Events ──
+            this.socket.on('rooms-list', (rooms) => {
+                if (this.onRoomsList) this.onRoomsList(rooms);
+            });
+
+            this.socket.on('rooms-updated', (rooms) => {
+                if (this.onRoomsUpdated) this.onRoomsUpdated(rooms);
+            });
+
             // ── Gameplay Events ──
             this.socket.on('opponent-move', (moveData) => {
                 if (this.onOpponentMove) this.onOpponentMove(moveData);
@@ -69,6 +81,11 @@ export class Network {
 
             this.socket.on('opponent-disconnect', () => {
                 if (this.onOpponentDisconnect) this.onOpponentDisconnect();
+            });
+
+            // ── Emote Events ──
+            this.socket.on('opponent-emote', ({ emote, from }) => {
+                if (this.onEmoteReceived) this.onEmoteReceived(emote, from);
             });
 
             // ── Restart Events ──
@@ -86,23 +103,35 @@ export class Network {
         });
     }
 
-    createRoom() {
+    requestRooms() {
         if (this.socket) {
-            this.socket.emit('create-room');
+            this.socket.emit('get-rooms');
         }
     }
 
-    joinRoom(roomId) {
+    createRoom(playerName) {
+        if (this.socket) {
+            this.socket.emit('create-room', { playerName });
+        }
+    }
+
+    joinRoom(roomId, playerName) {
         if (this.socket) {
             this.roomId = roomId;
             this.playerSide = 'black';
-            this.socket.emit('join-room', { roomId });
+            this.socket.emit('join-room', { roomId, playerName });
         }
     }
 
     sendMove(fromRow, fromCol, toRow, toCol) {
         if (this.socket) {
             this.socket.emit('make-move', { fromRow, fromCol, toRow, toCol });
+        }
+    }
+
+    sendEmote(emote) {
+        if (this.socket) {
+            this.socket.emit('send-emote', { emote });
         }
     }
 

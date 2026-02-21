@@ -68,24 +68,52 @@
                 <div style="width:36px"></div>
             </div>
 
-            <!-- Create / Join choice -->
+            <!-- Player name input -->
+            <div class="name-input-group">
+                <label class="name-label" for="input-player-name">Your Name</label>
+                <input id="input-player-name" type="text" placeholder="Anonymous" maxlength="16" autocomplete="off"
+                    spellcheck="false">
+            </div>
+
+            <!-- Create / Join section -->
             <div id="lobby-choice" class="lobby-section">
-                <button id="btn-create-room" class="mode-btn">
-                    <span class="btn-icon">🏠</span>
-                    <span class="btn-text">
-                        <strong>Create Room</strong>
-                        <small>Get a link to share</small>
-                    </span>
-                </button>
+                <div class="lobby-actions-row">
+                    <button id="btn-create-room" class="mode-btn">
+                        <span class="btn-icon">🏠</span>
+                        <span class="btn-text">
+                            <strong>Create Table</strong>
+                            <small>Start a new game</small>
+                        </span>
+                    </button>
+                </div>
+
                 <div class="divider-row">
                     <span class="divider-line"></span>
-                    <span class="divider-text">or</span>
+                    <span class="divider-text">or join</span>
                     <span class="divider-line"></span>
                 </div>
+
                 <div class="join-input-group">
-                    <input id="input-room-id" type="text" placeholder="Enter Room Code" maxlength="6" autocomplete="off"
+                    <input id="input-room-id" type="text" placeholder="Room Code" maxlength="6" autocomplete="off"
                         spellcheck="false">
                     <button id="btn-join-room" class="join-btn">Join</button>
+                </div>
+
+                <!-- Available Tables -->
+                <div class="room-browser">
+                    <div class="room-browser-header">
+                        <span class="room-browser-title">🎯 Open Tables</span>
+                        <button id="btn-refresh-rooms" class="refresh-btn" title="Refresh">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M1 4v6h6" />
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="room-list" class="room-list">
+                        <div class="room-empty">Connecting...</div>
+                    </div>
                 </div>
             </div>
 
@@ -109,6 +137,7 @@
                         Room Code: <strong id="room-code-text"></strong>
                     </div>
                 </div>
+                <button id="btn-cancel-wait" class="cancel-wait-btn">Cancel</button>
             </div>
 
             <!-- Error / info message -->
@@ -149,6 +178,8 @@
             <!-- Canvas -->
             <div class="canvas-wrapper">
                 <canvas id="game-canvas"></canvas>
+                <!-- Emote float container (overlays the board) -->
+                <div id="emote-float" class="emote-float-container"></div>
             </div>
 
             <!-- Controls -->
@@ -167,6 +198,20 @@
                     </svg>
                     <span>Restart</span>
                 </button>
+            </div>
+
+            <!-- Emote Bar (shown in online mode) -->
+            <div id="emote-bar" class="emote-bar hidden">
+                <button class="emote-btn" data-emote="👋">👋</button>
+                <button class="emote-btn" data-emote="😊">😊</button>
+                <button class="emote-btn" data-emote="😂">😂</button>
+                <button class="emote-btn" data-emote="🤔">🤔</button>
+                <button class="emote-btn" data-emote="👍">👍</button>
+                <button class="emote-btn" data-emote="👎">👎</button>
+                <button class="emote-btn" data-emote="😤">😤</button>
+                <button class="emote-btn" data-emote="😡">😡</button>
+                <button class="emote-btn" data-emote="🎉">🎉</button>
+                <button class="emote-btn" data-emote="💪">💪</button>
             </div>
         </div>
     </div>

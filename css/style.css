@@ -325,6 +325,7 @@ body::before {
 
 /* === Canvas === */
 .canvas-wrapper {
+    position: relative;
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
@@ -742,6 +743,248 @@ body::before {
     to {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* === Player Name Input === */
+.name-input-group {
+    margin-bottom: 16px;
+}
+
+.name-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.name-input-group input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.name-input-group input::placeholder {
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
+.name-input-group input:focus {
+    border-color: var(--accent-gold);
+}
+
+/* === Room Browser === */
+.room-browser {
+    margin-top: 4px;
+}
+
+.room-browser-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.room-browser-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.refresh-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.refresh-btn:hover {
+    color: var(--accent-gold);
+    border-color: rgba(212, 168, 67, 0.3);
+}
+
+.room-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.room-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 20px 0;
+    font-weight: 300;
+}
+
+.room-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.room-card:hover {
+    background: rgba(212, 168, 67, 0.08);
+    border-color: rgba(212, 168, 67, 0.25);
+}
+
+.room-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.room-card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.room-card-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
+.room-card-join {
+    padding: 6px 16px;
+    background: rgba(212, 168, 67, 0.15);
+    border: 1px solid rgba(212, 168, 67, 0.3);
+    border-radius: var(--radius-sm);
+    color: var(--accent-gold-light);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.room-card-join:hover {
+    background: rgba(212, 168, 67, 0.25);
+    border-color: var(--accent-gold);
+}
+
+/* === Cancel Wait Button === */
+.cancel-wait-btn {
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.cancel-wait-btn:hover {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+}
+
+/* === Emote Bar === */
+.emote-bar {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.emote-bar.hidden {
+    display: none;
+}
+
+.emote-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    line-height: 1;
+}
+
+.emote-btn:hover {
+    background: rgba(212, 168, 67, 0.12);
+    border-color: rgba(212, 168, 67, 0.3);
+    transform: scale(1.15);
+}
+
+.emote-btn:active {
+    transform: scale(0.9);
+}
+
+/* === Emote Float === */
+.emote-float-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.emote-bubble {
+    position: absolute;
+    font-size: 48px;
+    animation: emoteFloat 2s ease-out forwards;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.emote-bubble.self {
+    right: 10%;
+    bottom: 10%;
+}
+
+.emote-bubble.opponent {
+    left: 10%;
+    top: 30%;
+}
+
+@keyframes emoteFloat {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(0.5);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(-20px) scale(1.1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-120px) scale(0.8);
     }
 }
 

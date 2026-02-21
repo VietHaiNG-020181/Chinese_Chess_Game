@@ -23,35 +23,72 @@ app.use(express.static(path.join(__dirname)));
 
 const rooms = new Map();
 
+// Allowed emotes
+const ALLOWED_EMOTES = ['👋', '😊', '😂', '🤔', '👍', '👎', '😤', '😡', '🎉', '💪'];
+
 function generateRoomId() {
     return crypto.randomBytes(3).toString('hex'); // 6-char hex ID
+}
+
+/**
+ * Get list of open rooms (waiting for a second player)
+ */
+function getOpenRooms() {
+    const openRooms = [];
+    for (const [roomId, room] of rooms) {
+        if (!room.started && room.players.length === 1) {
+            openRooms.push({
+                roomId,
+                creatorName: room.creatorName || 'Anonymous',
+                createdAt: room.createdAt,
+            });
+        }
+    }
+    return openRooms;
+}
+
+/**
+ * Broadcast updated room list to all connected sockets
+ */
+function broadcastRoomList() {
+    io.emit('rooms-updated', getOpenRooms());
 }
 
 io.on('connection', (socket) => {
     console.log(`🔌 Connected: ${socket.id}`);
 
+    // ── Get Rooms ──
+    socket.on('get-rooms', () => {
+        socket.emit('rooms-list', getOpenRooms());
+    });
+
     // ── Create Room ──
-    socket.on('create-room', () => {
+    socket.on('create-room', ({ playerName } = {}) => {
         const roomId = generateRoomId();
         rooms.set(roomId, {
-            players: [{ id: socket.id, side: 'red' }],
+            players: [{ id: socket.id, side: 'red', name: playerName || 'Anonymous' }],
             moves: [],
             started: false,
+            creatorName: playerName || 'Anonymous',
+            createdAt: Date.now(),
         });
         socket.join(roomId);
         socket.roomId = roomId;
         socket.playerSide = 'red';
+        socket.playerName = playerName || 'Anonymous';
 
         socket.emit('room-created', { roomId });
-        console.log(`🏠 Room ${roomId} created by ${socket.id}`);
+        console.log(`🏠 Room ${roomId} created by ${playerName || socket.id}`);
+
+        broadcastRoomList();
     });
 
     // ── Join Room ──
-    socket.on('join-room', ({ roomId }) => {
+    socket.on('join-room', ({ roomId, playerName } = {}) => {
         const room = rooms.get(roomId);
 
         if (!room) {
-            socket.emit('join-error', { message: 'Room not found. Check the link and try again.' });
+            socket.emit('join-error', { message: 'Room not found. Check the code and try again.' });
             return;
         }
 
@@ -65,19 +102,24 @@ io.on('connection', (socket) => {
             return;
         }
 
-        room.players.push({ id: socket.id, side: 'black' });
+        const joinerName = playerName || 'Anonymous';
+        room.players.push({ id: socket.id, side: 'black', name: joinerName });
         room.started = true;
         socket.join(roomId);
         socket.roomId = roomId;
         socket.playerSide = 'black';
+        socket.playerName = joinerName;
 
         // Notify both players the game is starting
         io.to(roomId).emit('game-start', {
             red: room.players[0].id,
             black: room.players[1].id,
+            redName: room.players[0].name,
+            blackName: joinerName,
         });
 
         console.log(`🎮 Room ${roomId} game started!`);
+        broadcastRoomList();
     });
 
     // ── Make Move ──
@@ -93,6 +135,15 @@ io.on('connection', (socket) => {
 
         // Relay to opponent
         socket.to(roomId).emit('opponent-move', { fromRow, fromCol, toRow, toCol });
+    });
+
+    // ── Emotes ──
+    socket.on('send-emote', ({ emote }) => {
+        const roomId = socket.roomId;
+        if (!roomId) return;
+        if (!ALLOWED_EMOTES.includes(emote)) return;
+
+        socket.to(roomId).emit('opponent-emote', { emote, from: socket.playerSide });
     });
 
     // ── Restart Request ──
@@ -134,6 +185,7 @@ io.on('connection', (socket) => {
         // Clean up room
         rooms.delete(roomId);
         console.log(`🗑️ Room ${roomId} deleted`);
+        broadcastRoomList();
     });
 });
 

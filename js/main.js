@@ -18,6 +18,7 @@ class ChineseChessApp {
         this.playerSide = SIDE.RED;
         this.botThinking = false;
         this.opponentDisconnected = false;
+        this.emoteCooldown = false;
 
         this.initUI();
         this.checkUrlForRoom();
@@ -43,6 +44,8 @@ class ChineseChessApp {
         document.getElementById('btn-create-room').addEventListener('click', () => this.handleCreateRoom());
         document.getElementById('btn-join-room').addEventListener('click', () => this.handleJoinRoom());
         document.getElementById('btn-copy-link').addEventListener('click', () => this.handleCopyLink());
+        document.getElementById('btn-refresh-rooms').addEventListener('click', () => this.refreshRooms());
+        document.getElementById('btn-cancel-wait').addEventListener('click', () => this.handleCancelWait());
 
         // Room ID input: Enter to join
         document.getElementById('input-room-id').addEventListener('keydown', (e) => {
@@ -57,6 +60,14 @@ class ChineseChessApp {
         document.getElementById('btn-restart-decline').addEventListener('click', () => {
             document.getElementById('restart-modal').classList.add('hidden');
             if (this.network) this.network.declineRestart();
+        });
+
+        // Emote buttons
+        document.querySelectorAll('.emote-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const emote = btn.dataset.emote;
+                this.handleSendEmote(emote);
+            });
         });
     }
 
@@ -90,16 +101,25 @@ class ChineseChessApp {
         this.mode = null;
         this.opponentDisconnected = false;
         document.getElementById('connection-badge').classList.add('hidden');
+        document.getElementById('emote-bar').classList.add('hidden');
         this.showScreen('menu-screen');
     }
 
-    showLobby() {
+    async showLobby() {
         this.showScreen('lobby-screen');
         // Reset lobby state
         document.getElementById('lobby-choice').classList.remove('hidden');
         document.getElementById('lobby-waiting').classList.add('hidden');
         document.getElementById('lobby-error').classList.add('hidden');
         document.getElementById('input-room-id').value = '';
+
+        // Connect and fetch rooms
+        try {
+            await this.ensureConnected();
+            this.network.requestRooms();
+        } catch (e) {
+            this.renderRoomList([]);
+        }
     }
 
     // ── Online Lobby ──────────────────────────
@@ -114,6 +134,11 @@ class ChineseChessApp {
         }
     }
 
+    getPlayerName() {
+        const input = document.getElementById('input-player-name');
+        return (input && input.value.trim()) || 'Anonymous';
+    }
+
     setupNetworkCallbacks() {
         this.network.onRoomCreated = (roomId) => {
             // Show waiting UI with link
@@ -126,10 +151,7 @@ class ChineseChessApp {
         };
 
         this.network.onJoinError = (message) => {
-            const errEl = document.getElementById('lobby-error');
-            errEl.textContent = message;
-            errEl.classList.remove('hidden');
-            setTimeout(() => errEl.classList.add('hidden'), 4000);
+            this.showLobbyError(message);
         };
 
         this.network.onGameStart = (data) => {
@@ -168,12 +190,83 @@ class ChineseChessApp {
         this.network.onRestartDeclined = () => {
             this.showToast('❌ Restart declined');
         };
+
+        // ── Room Browser ──
+        this.network.onRoomsList = (rooms) => {
+            this.renderRoomList(rooms);
+        };
+
+        this.network.onRoomsUpdated = (rooms) => {
+            // Only update if we're on the lobby screen and not waiting
+            const lobbyChoice = document.getElementById('lobby-choice');
+            if (!lobbyChoice.classList.contains('hidden')) {
+                this.renderRoomList(rooms);
+            }
+        };
+
+        // ── Emotes ──
+        this.network.onEmoteReceived = (emote, from) => {
+            this.showFloatingEmote(emote);
+        };
+    }
+
+    // ── Room List ─────────────────────────────
+
+    renderRoomList(rooms) {
+        const container = document.getElementById('room-list');
+
+        if (!rooms || rooms.length === 0) {
+            container.innerHTML = '<div class="room-empty">No open tables — create one!</div>';
+            return;
+        }
+
+        container.innerHTML = rooms.map(room => {
+            const age = this.formatAge(room.createdAt);
+            return `
+                <div class="room-card" data-room="${room.roomId}">
+                    <div class="room-card-info">
+                        <span class="room-card-name">${this.escapeHtml(room.creatorName)}</span>
+                        <span class="room-card-meta">1/2 · ${age}</span>
+                    </div>
+                    <button class="room-card-join" data-room="${room.roomId}">Join</button>
+                </div>
+            `;
+        }).join('');
+
+        // Bind join buttons
+        container.querySelectorAll('.room-card-join').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const roomId = e.target.dataset.room;
+                this.handleJoinRoomById(roomId);
+            });
+        });
+    }
+
+    formatAge(timestamp) {
+        if (!timestamp) return '';
+        const seconds = Math.floor((Date.now() - timestamp) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        return `${Math.floor(minutes / 60)}h ago`;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    refreshRooms() {
+        if (this.network && this.network.connected) {
+            this.network.requestRooms();
+        }
     }
 
     async handleCreateRoom() {
         try {
             await this.ensureConnected();
-            this.network.createRoom();
+            this.network.createRoom(this.getPlayerName());
         } catch (e) {
             this.showLobbyError('Failed to connect to server. Is the server running?');
         }
@@ -188,10 +281,28 @@ class ChineseChessApp {
         }
         try {
             await this.ensureConnected();
-            this.network.joinRoom(roomId);
+            this.network.joinRoom(roomId, this.getPlayerName());
         } catch (e) {
             this.showLobbyError('Failed to connect to server. Is the server running?');
         }
+    }
+
+    async handleJoinRoomById(roomId) {
+        try {
+            await this.ensureConnected();
+            this.network.joinRoom(roomId, this.getPlayerName());
+        } catch (e) {
+            this.showLobbyError('Failed to connect to server.');
+        }
+    }
+
+    handleCancelWait() {
+        // Go back to lobby choice, disconnect and reconnect
+        if (this.network) {
+            this.network.disconnect();
+            this.network = null;
+        }
+        this.showLobby();
     }
 
     showLobbyError(message) {
@@ -210,6 +321,32 @@ class ChineseChessApp {
             document.execCommand('copy');
             this.showToast('📋 Link copied!');
         });
+    }
+
+    // ── Emotes ────────────────────────────────
+
+    handleSendEmote(emote) {
+        if (this.mode !== 'online' || !this.network || this.emoteCooldown) return;
+
+        this.network.sendEmote(emote);
+        this.showFloatingEmote(emote, true); // Show own emote too
+
+        // Cooldown to prevent spam
+        this.emoteCooldown = true;
+        setTimeout(() => { this.emoteCooldown = false; }, 1500);
+    }
+
+    showFloatingEmote(emote, isSelf = false) {
+        const container = document.getElementById('emote-float');
+        const el = document.createElement('div');
+        el.className = `emote-bubble ${isSelf ? 'self' : 'opponent'}`;
+        el.textContent = emote;
+        container.appendChild(el);
+
+        // Remove after animation completes
+        setTimeout(() => {
+            el.remove();
+        }, 2000);
     }
 
     // ── Game Start ────────────────────────────
@@ -255,6 +392,14 @@ class ChineseChessApp {
             badge.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
+        }
+
+        // Show emote bar in online mode
+        const emoteBar = document.getElementById('emote-bar');
+        if (mode === 'online') {
+            emoteBar.classList.remove('hidden');
+        } else {
+            emoteBar.classList.add('hidden');
         }
 
         // Show which side you are in online mode
