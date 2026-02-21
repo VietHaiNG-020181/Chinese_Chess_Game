@@ -1,0 +1,14 @@
+{
+  "name": "chinese-chess-online",
+  "version": "1.0.0",
+  "description": "Chinese Chess (Xiangqi) online game with PvP, PvsBot, and online multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.7.5"
+  }
+}
