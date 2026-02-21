@@ -224,4 +224,34 @@ export class Game {
         this.selectedPiece = null;
         this.validMoves = [];
     }
+
+    /**
+     * Serialize game state to a plain object (for localStorage)
+     */
+    toJSON() {
+        return {
+            board: this.board,
+            currentTurn: this.currentTurn,
+            moveHistory: this.moveHistory,
+            lastMove: this.lastMove,
+            gameOver: this.gameOver,
+            winner: this.winner,
+            inCheck: this.inCheck,
+        };
+    }
+
+    /**
+     * Restore game state from a plain object
+     */
+    fromJSON(data) {
+        this.board = data.board;
+        this.currentTurn = data.currentTurn;
+        this.moveHistory = data.moveHistory || [];
+        this.lastMove = data.lastMove || null;
+        this.gameOver = data.gameOver || false;
+        this.winner = data.winner || null;
+        this.inCheck = data.inCheck || false;
+        this.selectedPiece = null;
+        this.validMoves = [];
+    }
 }

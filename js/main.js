@@ -8,6 +8,8 @@ import { AI } from './ai.js';
 import { Network } from './network.js';
 import { SIDE } from './constants.js';
 
+const SAVE_KEY = 'xiangqi-save';
+
 class ChineseChessApp {
     constructor() {
         this.game = new Game();
@@ -21,6 +23,7 @@ class ChineseChessApp {
         this.emoteCooldown = false;
 
         this.initUI();
+        this.checkSavedGame();
         this.checkUrlForRoom();
     }
 
@@ -29,6 +32,7 @@ class ChineseChessApp {
         document.getElementById('btn-pvp').addEventListener('click', () => this.startGame('pvp'));
         document.getElementById('btn-pvsbot').addEventListener('click', () => this.startGame('pvsbot'));
         document.getElementById('btn-online').addEventListener('click', () => this.showLobby());
+        document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
 
         // Control buttons
         document.getElementById('btn-undo').addEventListener('click', () => this.handleUndo());
@@ -102,7 +106,101 @@ class ChineseChessApp {
         this.opponentDisconnected = false;
         document.getElementById('connection-badge').classList.add('hidden');
         document.getElementById('emote-bar').classList.add('hidden');
+        this.checkSavedGame();
         this.showScreen('menu-screen');
+    }
+
+    // ── Save / Load ───────────────────────────
+
+    saveGame() {
+        if (this.mode === 'online') return; // don't save online games
+        try {
+            const data = {
+                mode: this.mode,
+                playerSide: this.playerSide,
+                gameState: this.game.toJSON(),
+                savedAt: Date.now(),
+            };
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('Failed to save game:', e);
+        }
+    }
+
+    clearSave() {
+        localStorage.removeItem(SAVE_KEY);
+        const section = document.getElementById('resume-section');
+        if (section) section.classList.add('hidden');
+    }
+
+    checkSavedGame() {
+        try {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (!data || !data.gameState || data.gameState.gameOver) {
+                this.clearSave();
+                return;
+            }
+            // Show resume button
+            const section = document.getElementById('resume-section');
+            section.classList.remove('hidden');
+            const info = document.getElementById('resume-info');
+            const modeLabel = data.mode === 'pvsbot' ? 'vs Bot' : 'PvP';
+            const turnLabel = data.gameState.currentTurn === SIDE.RED ? 'Red' : 'Black';
+            const moves = (data.gameState.moveHistory || []).length;
+            info.textContent = `${modeLabel} · ${turnLabel}'s turn · ${moves} moves`;
+        } catch (e) {
+            this.clearSave();
+        }
+    }
+
+    resumeGame() {
+        try {
+            const raw = localStorage.getItem(SAVE_KEY);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+
+            this.mode = data.mode;
+            this.playerSide = data.playerSide || SIDE.RED;
+            this.game.fromJSON(data.gameState);
+            this.botThinking = false;
+            this.opponentDisconnected = false;
+
+            const canvas = document.getElementById('game-canvas');
+            this.renderer = new BoardRenderer(canvas);
+
+            if (this.mode === 'pvsbot') {
+                this.ai = new AI(SIDE.BLACK);
+            } else {
+                this.ai = null;
+            }
+
+            this.showScreen('game-screen');
+
+            let modeLabel;
+            if (this.mode === 'pvp') modeLabel = '⚔️ Player vs Player';
+            else if (this.mode === 'pvsbot') modeLabel = '🤖 Player vs Bot';
+            else modeLabel = '🌐 Online';
+            document.getElementById('mode-label').textContent = modeLabel;
+
+            document.getElementById('btn-undo').style.display = '';
+            document.getElementById('connection-badge').classList.add('hidden');
+            document.getElementById('emote-bar').classList.add('hidden');
+
+            this.updateStatus();
+            this.renderer.render(this.game);
+            this.showToast('💾 Game resumed');
+
+            // If it's the bot's turn, trigger bot
+            if (this.mode === 'pvsbot' && !this.game.gameOver && this.game.currentTurn === this.ai.side) {
+                this.triggerBotMove();
+            }
+        } catch (e) {
+            console.error('Failed to resume game:', e);
+            this.clearSave();
+            this.showToast('❌ Failed to resume');
+        }
     }
 
     async showLobby() {
@@ -447,6 +545,10 @@ class ChineseChessApp {
                     this.game.makeMove(fromRow, fromCol, row, col);
                     this.updateStatus();
                     this.renderer.render(this.game);
+                    this.saveGame();
+
+                    // Clear save on game over
+                    if (this.game.gameOver) this.clearSave();
 
                     // Send move to server in online mode
                     if (this.mode === 'online' && this.network) {
@@ -518,6 +620,7 @@ class ChineseChessApp {
 
         this.updateStatus();
         this.renderer.render(this.game);
+        this.saveGame();
     }
 
     handleRestart() {

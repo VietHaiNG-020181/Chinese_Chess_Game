@@ -746,6 +746,27 @@ body::before {
     }
 }
 
+/* === Resume Section === */
+.resume-section {
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.resume-section.hidden {
+    display: none;
+}
+
+.resume-btn {
+    border-color: rgba(46, 204, 113, 0.3) !important;
+    background: rgba(46, 204, 113, 0.08) !important;
+}
+
+.resume-btn:hover {
+    background: rgba(46, 204, 113, 0.15) !important;
+    border-color: rgba(46, 204, 113, 0.5) !important;
+}
+
 /* === Player Name Input === */
 .name-input-group {
     margin-bottom: 16px;
